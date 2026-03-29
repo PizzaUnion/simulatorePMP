@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Countdown PMP - Minuti e Secondi</title>
+  <title>Countdown PMP</title>
   <style>
     :root {
       --bg: #0f172a;
@@ -24,11 +24,12 @@
       background: radial-gradient(circle at top, #1e293b 0%, var(--bg) 60%);
       font-family: Arial, Helvetica, sans-serif;
       color: var(--text);
+      padding: 16px;
     }
 
     .wrap {
       width: min(92vw, 720px);
-      background: rgba(17, 24, 39, 0.92);
+      background: rgba(17,24,39,0.92);
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: 24px;
       padding: 32px;
@@ -94,6 +95,7 @@
       margin-top: 18px;
       font-size: 14px;
       color: var(--muted);
+      line-height: 1.5;
     }
 
     .question-box {
@@ -141,23 +143,49 @@
       text-align: center;
       overflow-wrap: break-word;
     }
+
+    .input-row {
+      display:flex;
+      justify-content:center;
+      margin-bottom:18px;
+    }
+
+    .input-inner {
+      display:flex;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:center;
+    }
+
+    .minutes-input {
+      width:120px;
+      padding:12px 14px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,0.12);
+      background:#0b1220;
+      color:white;
+      font-size:18px;
+      font-weight:700;
+      text-align:center;
+    }
   </style>
 </head>
 <body>
   <div class="wrap" id="app">
-    <h1>Countdown PMP</h1>
-    <p>Visualizzazione in minuti e secondi</p>
+    <h1 id="title">Countdown PMP</h1>
+    <p id="subtitle">Visualizzazione in minuti e secondi</p>
 
-    <div style="display:flex; justify-content:center; margin-bottom:18px;">
-      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;">
-        <label for="minutesInput" style="color: var(--muted); font-size:16px;">Minuti iniziali</label>
-        <input id="minutesInput" type="number" min="1" step="1" value="230" style="width:120px; padding:12px 14px; border-radius:14px; border:1px solid rgba(255,255,255,0.12); background:#0b1220; color:white; font-size:18px; font-weight:700; text-align:center;" />
+    <div class="input-row">
+      <div class="input-inner">
+        <label for="minutesInput" id="minutesLabel" style="color: var(--muted); font-size:16px;">Minuti iniziali</label>
+        <input id="minutesInput" class="minutes-input" type="number" min="1" step="1" value="230" />
         <button class="secondary" id="applyBtn">Imposta</button>
       </div>
     </div>
 
     <div class="timer" id="timer">230:00</div>
-    <div class="label">minuti : secondi rimanenti</div>
+    <div class="label" id="timerLabel">minuti : secondi rimanenti</div>
 
     <div class="controls">
       <button class="primary" id="startBtn">Avvia</button>
@@ -165,12 +193,14 @@
       <button class="danger" id="resetBtn">Reset</button>
     </div>
 
-    <div class="small">Imposta i minuti iniziali nella box, poi avvia il countdown. Il reset torna al valore impostato.</div>
+    <div class="small" id="helperText">
+      Imposta i minuti iniziali nella box, poi avvia il countdown. Il reset torna al valore impostato.
+    </div>
 
     <div class="question-box">
-      <div class="question-title">Progressivo teorico domanda</div>
+      <div class="question-title" id="questionTitle">Progressivo teorico domanda</div>
       <div class="question-number" id="questionNumber">1</div>
-      <div class="question-detail" id="questionDetail">Calcolato per arrivare a 180 domande in 230 minuti</div>
+      <div class="question-detail" id="questionDetail">Passo teorico: 1 min e 17 secondi per domanda</div>
       <div class="question-total" id="questionTotal">Totale teorico: 180</div>
     </div>
   </div>
@@ -180,21 +210,92 @@
     let startSeconds = startMinutes * 60;
 
     const timerEl = document.getElementById('timer');
+    const titleEl = document.getElementById('title');
+    const subtitleEl = document.getElementById('subtitle');
+    const minutesLabelEl = document.getElementById('minutesLabel');
+    const timerLabelEl = document.getElementById('timerLabel');
+    const helperTextEl = document.getElementById('helperText');
+    const questionTitleEl = document.getElementById('questionTitle');
+    const questionNumberEl = document.getElementById('questionNumber');
+    const questionDetailEl = document.getElementById('questionDetail');
+    const questionTotalEl = document.getElementById('questionTotal');
+
     const startBtn = document.getElementById('startBtn');
     const minutesInput = document.getElementById('minutesInput');
     const applyBtn = document.getElementById('applyBtn');
     const pauseBtn = document.getElementById('pauseBtn');
     const resetBtn = document.getElementById('resetBtn');
     const app = document.getElementById('app');
-    const questionNumberEl = document.getElementById('questionNumber');
-    const questionDetailEl = document.getElementById('questionDetail');
-    const questionTotalEl = document.getElementById('questionTotal');
 
     let remainingSeconds = startSeconds;
+    let intervalId = null;
+
     const TARGET_QUESTIONS = 180;
     const BASE_EXAM_MINUTES = 230;
     const SECONDS_PER_QUESTION = (BASE_EXAM_MINUTES * 60) / TARGET_QUESTIONS;
-    let intervalId = null;
+
+    const params = new URLSearchParams(window.location.search);
+    const forcedLang = (params.get('lang') || '').toLowerCase();
+    const browserLang = (navigator.language || '').toLowerCase();
+
+    let effectiveLang = browserLang;
+    if (forcedLang === 'it' || forcedLang.startsWith('it-')) {
+      effectiveLang = 'it';
+    } else if (forcedLang === 'en' || forcedLang.startsWith('en-')) {
+      effectiveLang = 'en';
+    }
+
+    const isItalian = effectiveLang.startsWith('it');
+
+    const copy = {
+      it: {
+        htmlLang: 'it',
+        title: 'Countdown PMP',
+        subtitle: 'Visualizzazione in minuti e secondi',
+        minutesLabel: 'Minuti iniziali',
+        apply: 'Imposta',
+        timerLabel: 'minuti : secondi rimanenti',
+        start: 'Avvia',
+        pause: 'Pausa',
+        reset: 'Reset',
+        helper: 'Imposta i minuti iniziali nella box, poi avvia il countdown. Il reset torna al valore impostato.',
+        questionTitle: 'Progressivo teorico domanda',
+        questionDetail: 'Passo teorico: 1 min e 17 secondi per domanda',
+        total: (n) => `Totale teorico: ${n}`
+      },
+      en: {
+        htmlLang: 'en',
+        title: 'PMP Countdown',
+        subtitle: 'Display in minutes and seconds',
+        minutesLabel: 'Starting minutes',
+        apply: 'Set',
+        timerLabel: 'minutes : seconds remaining',
+        start: 'Start',
+        pause: 'Pause',
+        reset: 'Reset',
+        helper: 'Set the starting minutes in the box, then start the countdown. Reset returns to the selected value.',
+        questionTitle: 'Theoretical question progress',
+        questionDetail: 'Target pace: 1 min 17 sec per question',
+        total: (n) => `Theoretical total: ${n}`
+      }
+    };
+
+    const t = isItalian ? copy.it : copy.en;
+
+    function applyTranslations() {
+      document.documentElement.lang = t.htmlLang;
+      document.title = t.title;
+      titleEl.textContent = t.title;
+      subtitleEl.textContent = t.subtitle;
+      minutesLabelEl.textContent = t.minutesLabel;
+      applyBtn.textContent = t.apply;
+      timerLabelEl.textContent = t.timerLabel;
+      startBtn.textContent = t.start;
+      pauseBtn.textContent = t.pause;
+      resetBtn.textContent = t.reset;
+      helperTextEl.textContent = t.helper;
+      questionTitleEl.textContent = t.questionTitle;
+    }
 
     function render() {
       const safeSeconds = Math.max(0, remainingSeconds);
@@ -203,17 +304,18 @@
       timerEl.textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
 
       const elapsedSeconds = Math.max(0, startSeconds - safeSeconds);
+      const totalQuestions = Math.max(1, Math.ceil(startSeconds / SECONDS_PER_QUESTION));
       const theoreticalQuestion = Math.min(
         Math.floor(elapsedSeconds / SECONDS_PER_QUESTION) + 1,
-        Math.max(1, Math.ceil(startSeconds / SECONDS_PER_QUESTION))
+        totalQuestions
       );
-      const totalQuestions = Math.max(1, Math.ceil(startSeconds / SECONDS_PER_QUESTION));
+
       questionNumberEl.textContent = theoreticalQuestion;
-      questionDetailEl.textContent = 'Passo teorico: 1 min e 17 secondi per domanda';
-      questionTotalEl.textContent = `Totale teorico: ${totalQuestions}`;
+      questionDetailEl.textContent = t.questionDetail;
+      questionTotalEl.textContent = t.total(totalQuestions);
 
       app.classList.remove('warning', 'end');
-      if (remainingSeconds <= 30 * 60 && remainingSeconds > 0) {
+      if (safeSeconds <= 30 * 60 && safeSeconds > 0) {
         app.classList.add('warning');
       }
       if (safeSeconds <= 0) {
@@ -269,6 +371,7 @@
     pauseBtn.addEventListener('click', pauseTimer);
     resetBtn.addEventListener('click', resetTimer);
 
+    applyTranslations();
     render();
   </script>
 </body>
