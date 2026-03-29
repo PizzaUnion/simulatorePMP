@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Countdown PMP - Minuti e Secondi</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --accent: #22c55e;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      background: radial-gradient(circle at top, #1e293b 0%, var(--bg) 60%);
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--text);
+    }
+
+    .wrap {
+      width: min(92vw, 720px);
+      background: rgba(17, 24, 39, 0.92);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 24px;
+      padding: 32px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.35);
+      text-align: center;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(24px, 4vw, 36px);
+      font-weight: 700;
+    }
+
+    p {
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 16px;
+    }
+
+    .timer {
+      font-size: clamp(80px, 18vw, 180px);
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -4px;
+      color: var(--accent);
+      margin: 20px 0 8px;
+    }
+
+    .label {
+      font-size: clamp(18px, 3vw, 28px);
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 20px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.12s ease, opacity 0.12s ease;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+
+    .primary { background: var(--accent); color: #052e16; }
+    .secondary { background: #334155; color: white; }
+    .danger { background: var(--danger); color: white; }
+
+    .warning .timer { color: #f59e0b; }
+    .end .timer { color: var(--danger); }
+
+    .small {
+      margin-top: 18px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .question-box {
+      margin-top: 26px;
+      padding: 18px;
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+    }
+
+    .question-title {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .question-number {
+      font-size: clamp(36px, 7vw, 64px);
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+
+    .question-detail {
+      font-size: 14px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap" id="app">
+    <h1>Countdown PMP</h1>
+    <p>Visualizzazione in minuti e secondi</p>
+
+    <div style="display:flex; justify-content:center; margin-bottom:18px;">
+      <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:center;">
+        <label for="minutesInput" style="color: var(--muted); font-size:16px;">Minuti iniziali</label>
+        <input id="minutesInput" type="number" min="1" step="1" value="230" style="width:120px; padding:12px 14px; border-radius:14px; border:1px solid rgba(255,255,255,0.12); background:#0b1220; color:white; font-size:18px; font-weight:700; text-align:center;" />
+        <button class="secondary" id="applyBtn">Imposta</button>
+      </div>
+    </div>
+
+    <div class="timer" id="timer">230:00</div>
+    <div class="label">minuti : secondi rimanenti</div>
+
+    <div class="controls">
+      <button class="primary" id="startBtn">Avvia</button>
+      <button class="secondary" id="pauseBtn">Pausa</button>
+      <button class="danger" id="resetBtn">Reset</button>
+    </div>
+
+    <div class="small">Imposta i minuti iniziali nella box, poi avvia il countdown. Il reset torna al valore impostato.</div>
+
+    <div class="question-box">
+      <div class="question-title">Progressivo teorico domanda</div>
+      <div class="question-number" id="questionNumber">1</div>
+      <div class="question-detail">Calcolato su 1 domanda ogni 1 min 20 sec</div>
+    </div>
+  </div>
+
+  <script>
+    let startMinutes = 230;
+    let startSeconds = startMinutes * 60;
+
+    const timerEl = document.getElementById('timer');
+    const startBtn = document.getElementById('startBtn');
+    const minutesInput = document.getElementById('minutesInput');
+    const applyBtn = document.getElementById('applyBtn');
+    const pauseBtn = document.getElementById('pauseBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const app = document.getElementById('app');
+    const questionNumberEl = document.getElementById('questionNumber');
+
+    let remainingSeconds = startSeconds;
+    const SECONDS_PER_QUESTION = 80;
+    let intervalId = null;
+
+    function render() {
+      const safeSeconds = Math.max(0, remainingSeconds);
+      const minutes = Math.floor(safeSeconds / 60);
+      const seconds = safeSeconds % 60;
+      timerEl.textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
+
+      const elapsedSeconds = Math.max(0, startSeconds - safeSeconds);
+      const theoreticalQuestion = Math.floor(elapsedSeconds / SECONDS_PER_QUESTION) + 1;
+      questionNumberEl.textContent = theoreticalQuestion;
+
+      app.classList.remove('warning', 'end');
+      if (remainingSeconds <= 30 * 60 && remainingSeconds > 0) {
+        app.classList.add('warning');
+      }
+      if (remainingSeconds <= 0) {
+        app.classList.add('end');
+      }
+    }
+
+    function startTimer() {
+      if (intervalId) return;
+
+      intervalId = setInterval(() => {
+        remainingSeconds--;
+        render();
+
+        if (remainingSeconds <= 0) {
+          clearInterval(intervalId);
+          intervalId = null;
+          remainingSeconds = 0;
+          render();
+        }
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      clearInterval(intervalId);
+      intervalId = null;
+    }
+
+    function applyMinutes() {
+      const parsed = parseInt(minutesInput.value, 10);
+      const safeMinutes = Number.isFinite(parsed) && parsed > 0 ? parsed : 230;
+      startMinutes = safeMinutes;
+      startSeconds = startMinutes * 60;
+      pauseTimer();
+      remainingSeconds = startSeconds;
+      minutesInput.value = startMinutes;
+      render();
+    }
+
+    function resetTimer() {
+      pauseTimer();
+      remainingSeconds = startSeconds;
+      render();
+    }
+
+    startBtn.addEventListener('click', startTimer);
+    applyBtn.addEventListener('click', applyMinutes);
+    minutesInput.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') {
+        applyMinutes();
+      }
+    });
+    pauseBtn.addEventListener('click', pauseTimer);
+    resetBtn.addEventListener('click', resetTimer);
+
+    render();
+  </script>
+</body>
+</html>
