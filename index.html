@@ -118,8 +118,24 @@
     }
 
     .question-detail {
-      font-size: 14px;
+      font-size: 15px;
       color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .question-total {
+      display: inline-block;
+      margin-top: 14px;
+      padding: 16px 24px;
+      border-radius: 16px;
+      background: rgba(34,197,94,0.16);
+      border: 1px solid rgba(34,197,94,0.32);
+      color: var(--text);
+      font-size: 28px;
+      font-weight: 900;
+      line-height: 1.2;
+      min-width: 320px;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.18);
     }
   </style>
 </head>
@@ -150,7 +166,8 @@
     <div class="question-box">
       <div class="question-title">Progressivo teorico domanda</div>
       <div class="question-number" id="questionNumber">1</div>
-      <div class="question-detail">Calcolato su 1 domanda ogni 1 min 20 sec</div>
+      <div class="question-detail" id="questionDetail">Calcolato per arrivare a 180 domande in 230 minuti</div>
+      <div class="question-total" id="questionTotal">Totale teorico: 180</div>
     </div>
   </div>
 
@@ -166,9 +183,13 @@
     const resetBtn = document.getElementById('resetBtn');
     const app = document.getElementById('app');
     const questionNumberEl = document.getElementById('questionNumber');
+    const questionDetailEl = document.getElementById('questionDetail');
+    const questionTotalEl = document.getElementById('questionTotal');
 
     let remainingSeconds = startSeconds;
-    const SECONDS_PER_QUESTION = 80;
+    const TARGET_QUESTIONS = 180;
+    const BASE_EXAM_MINUTES = 230;
+    const SECONDS_PER_QUESTION = (BASE_EXAM_MINUTES * 60) / TARGET_QUESTIONS;
     let intervalId = null;
 
     function render() {
@@ -178,14 +199,20 @@
       timerEl.textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
 
       const elapsedSeconds = Math.max(0, startSeconds - safeSeconds);
-      const theoreticalQuestion = Math.floor(elapsedSeconds / SECONDS_PER_QUESTION) + 1;
+      const theoreticalQuestion = Math.min(
+        Math.floor(elapsedSeconds / SECONDS_PER_QUESTION) + 1,
+        Math.max(1, Math.ceil(startSeconds / SECONDS_PER_QUESTION))
+      );
+      const totalQuestions = Math.max(1, Math.ceil(startSeconds / SECONDS_PER_QUESTION));
       questionNumberEl.textContent = theoreticalQuestion;
+      questionDetailEl.textContent = 'Passo teorico: 1 min e 17 secondi per domanda';
+      questionTotalEl.textContent = `Totale teorico: ${totalQuestions}`;
 
       app.classList.remove('warning', 'end');
       if (remainingSeconds <= 30 * 60 && remainingSeconds > 0) {
         app.classList.add('warning');
       }
-      if (remainingSeconds <= 0) {
+      if (safeSeconds <= 0) {
         app.classList.add('end');
       }
     }
